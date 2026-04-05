@@ -1,0 +1,165 @@
+import streamlit as st
+import io
+import base64
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Page config
+with open('icon.png', 'rb') as f:
+    icon_bytes = f.read()
+st.set_page_config(page_title="FAQ Chatbot", page_icon=io.BytesIO(icon_bytes))
+
+# CSS styling
+st.markdown("""
+<style>
+/* Page background */
+[data-testid="stAppViewContainer"] {
+    background-color: #D2B48C !important;
+}
+.main .block-container {
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Title */
+.title {
+    text-align: center;
+    background: linear-gradient(135deg, #8B4513, #A0522D);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+.subtitle {
+    text-align: center;
+    color: #654321;
+    font-size: 18px;
+    font-style: italic;
+    margin-bottom: 30px;
+}
+
+/* Input and button */
+.stTextInput > div > div > input {
+    border-radius: 15px;
+    border: 2px solid #D2691E;
+    padding: 12px;
+    font-size: 16px;
+}
+.stButton > button {
+    background: linear-gradient(135deg, #8B4513, #A0522D);
+    color: white;
+    border: none;
+    border-radius: 15px;
+    padding: 12px 30px;
+    font-weight: 600;
+    font-size: 16px;
+    box-shadow: 0 8px 20px rgba(139, 69, 19, 0.3);
+    transition: all 0.3s ease;
+}
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(139, 69, 19, 0.4);
+}
+
+/* Response styling */
+.stSuccess {
+    background-color: #D4EDDA;
+    border: 1px solid #C3E6CB;
+    border-radius: 15px;
+    padding: 15px;
+}
+.stWarning {
+    background-color: #FFF3CD;
+    border: 1px solid #FFEAA7;
+    border-radius: 15px;
+    padding: 15px;
+}
+
+/* Chat bubble effect */
+.answer-bubble {
+    background: linear-gradient(135deg, #F5F5DC, #FFF8DC);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    border-left: 5px solid #D2691E;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main .block-container {
+        padding: 1rem;
+        margin: 10px;
+    }
+    .title {
+        font-size: 36px;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Title
+with open('icon.png', 'rb') as f:
+    icon_b64 = base64.b64encode(f.read()).decode()
+st.markdown(f"""
+<div style='display: flex; justify-content: center; align-items: center; margin-bottom: 10px;'>
+    <img src='data:image/png;base64,{icon_b64}' width='80' alt='FAQ Chatbot Icon' style='display: block;'>
+</div>
+""", unsafe_allow_html=True)
+st.markdown('<div class="title">FAQ Chatbot</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Ask me anything related to basic AI & programming</div>', unsafe_allow_html=True)
+
+# FAQ Data
+questions = [
+    "What is AI?",
+    "What is machine learning?",
+    "What is Python?",
+    "What is Streamlit?",
+    "Who created you?"
+]
+
+answers = [
+    "AI is the simulation of human intelligence by machines.",
+    "Machine learning is a subset of AI that learns from data.",
+    "Python is a popular programming language.",
+    "Streamlit is a Python library used to build web apps easily.",
+    "I am a chatbot created by Harshit Kabra."
+]
+
+# User input
+with st.container():
+    st.markdown('<div style="text-align: center; margin-bottom: 20px;"><h3>💬 Ask your question</h3></div>', unsafe_allow_html=True)
+    user_input = st.text_input("", placeholder="Type your question about AI or programming...").strip()
+
+# Button
+if st.button("Ask"):
+    if user_input:
+        try:
+            @st.cache_data
+            def get_vectors(input_questions):
+                vectorizer = TfidfVectorizer()
+                vectors = vectorizer.fit_transform(input_questions)
+                return vectors
+
+            all_questions = questions + [user_input]
+            vectors = get_vectors(tuple(all_questions))  # tuple for cache key
+
+            similarity = cosine_similarity(vectors[-1], vectors[:-1])
+            index = similarity.argmax()
+            score = similarity[0][index]
+
+            if score > 0.4:
+                st.success(f"🤖 Answer: {answers[index]}")
+            else:
+                st.warning("❓ Not sure: Sorry, I don't understand the question. Try rephrasing!")
+        except Exception as e:
+            st.error(f"Error processing question: {str(e)}")
+    else:
+        st.warning("⚠️ Please enter a question")
